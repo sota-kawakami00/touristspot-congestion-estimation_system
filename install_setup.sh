@@ -46,15 +46,15 @@ apt install -y \
     python3-rpi.gpio \
     python3-tk
 
-# pipでインストール
-pip3 install --upgrade pip
+# pipでインストール（--break-system-packagesフラグを使用）
+pip3 install --upgrade pip --break-system-packages
 
 # requirements.txtからインストール
 if [ -f "requirements.txt" ]; then
-    pip3 install -r requirements.txt
+    pip3 install -r requirements.txt --break-system-packages
 else
     echo "requirements.txtが見つかりません。手動でライブラリをインストールします..."
-    pip3 install RPi.GPIO nfcpy Adafruit-DHT
+    pip3 install RPi.GPIO nfcpy Adafruit-DHT --break-system-packages
 fi
 
 echo "GPIO権限設定..."
