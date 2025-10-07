@@ -34,12 +34,13 @@ logging.basicConfig(
 class SensorMonitoringSystem:
     """メインのセンサーモニタリングシステム"""
 
-    def __init__(self, headless=False):
+    def __init__(self, headless=False, skip_auth=False):
         self.logger = logging.getLogger(__name__)
         self.is_authenticated = False
         self.is_running = False
         self.data_queue = queue.Queue()
         self.headless = headless
+        self.skip_auth = skip_auth
 
         # センサーの初期化
         self.motion_sensor = MotionSensor(pin=config.pins.MOTION_SENSOR_PIN)
@@ -123,11 +124,15 @@ class SensorMonitoringSystem:
         """システムメイン実行"""
         self.logger.info("Starting Sensor Monitoring System")
 
-        # 認証待ち
-        print("NFCカードをタッチしてください...")
-        if not self.authenticate_user():
-            print("認証に失敗しました。システムを終了します。")
-            return
+        # 認証待ち（スキップオプションがある場合は省略）
+        if self.skip_auth:
+            print("認証をスキップしました（テストモード）")
+            self.is_authenticated = True
+        else:
+            print("NFCカードをタッチしてください...")
+            if not self.authenticate_user():
+                print("認証に失敗しました。システムを終了します。")
+                return
 
         print("認証成功！システムを開始します...")
         self.is_running = True
@@ -170,9 +175,10 @@ def main():
 
     # systemdサービスから実行される場合、または --headless引数がある場合はヘッドレスモードで実行
     headless = '--headless' in sys.argv or os.environ.get('DISPLAY') is None
+    skip_auth = '--skip-auth' in sys.argv
 
     try:
-        system = SensorMonitoringSystem(headless=headless)
+        system = SensorMonitoringSystem(headless=headless, skip_auth=skip_auth)
         system.run()
     except Exception as e:
         logging.error(f"System error: {e}")
