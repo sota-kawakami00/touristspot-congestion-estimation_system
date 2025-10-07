@@ -34,11 +34,12 @@ logging.basicConfig(
 class SensorMonitoringSystem:
     """メインのセンサーモニタリングシステム"""
 
-    def __init__(self):
+    def __init__(self, headless=False):
         self.logger = logging.getLogger(__name__)
         self.is_authenticated = False
         self.is_running = False
         self.data_queue = queue.Queue()
+        self.headless = headless
 
         # センサーの初期化
         self.motion_sensor = MotionSensor(pin=config.pins.MOTION_SENSOR_PIN)
@@ -51,10 +52,16 @@ class SensorMonitoringSystem:
         # NFC認証システムの初期化
         self.nfc_reader = NFCReader()
 
-        # GUI初期化
-        self.gui = SensorGUI(self.data_queue)
+        # GUI初期化（ヘッドレスモードでない場合のみ）
+        self.gui = None
+        if not headless:
+            try:
+                self.gui = SensorGUI(self.data_queue)
+            except Exception as e:
+                self.logger.warning(f"GUI initialization failed: {e}. Running in headless mode.")
+                self.headless = True
 
-        self.logger.info("Sensor Monitoring System initialized")
+        self.logger.info(f"Sensor Monitoring System initialized (headless: {self.headless})")
 
     def authenticate_user(self):
         """NFC認証を実行"""
@@ -129,9 +136,15 @@ class SensorMonitoringSystem:
         sensor_thread = threading.Thread(target=self.sensor_loop, daemon=True)
         sensor_thread.start()
 
-        # GUI開始
+        # GUI開始（ヘッドレスモードでない場合）
         try:
-            self.gui.run()
+            if self.gui and not self.headless:
+                self.gui.run()
+            else:
+                # ヘッドレスモード：無限ループでセンサーデータを読み続ける
+                self.logger.info("Running in headless mode")
+                while self.is_running:
+                    time.sleep(1)
         except KeyboardInterrupt:
             self.logger.info("System interrupted by user")
         finally:
@@ -152,8 +165,14 @@ class SensorMonitoringSystem:
 
 def main():
     """メイン関数"""
+    import os
+    import sys
+
+    # systemdサービスから実行される場合、または --headless引数がある場合はヘッドレスモードで実行
+    headless = '--headless' in sys.argv or os.environ.get('DISPLAY') is None
+
     try:
-        system = SensorMonitoringSystem()
+        system = SensorMonitoringSystem(headless=headless)
         system.run()
     except Exception as e:
         logging.error(f"System error: {e}")
