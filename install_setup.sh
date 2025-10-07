@@ -62,9 +62,16 @@ else
 fi
 
 echo "GPIO権限設定..."
-usermod -a -G gpio pi
-usermod -a -G spi pi
-usermod -a -G i2c pi
+# 現在の実行ユーザーを取得（sudoで実行されている場合はSUDO_USERを使用）
+CURRENT_USER=${SUDO_USER:-$(whoami)}
+if [ "$CURRENT_USER" != "root" ]; then
+    usermod -a -G gpio $CURRENT_USER
+    usermod -a -G spi $CURRENT_USER
+    usermod -a -G i2c $CURRENT_USER
+    echo "ユーザー $CURRENT_USER をGPIO、SPI、I2Cグループに追加しました"
+else
+    echo "注意: rootユーザーでの実行のため、グループ設定をスキップしました"
+fi
 
 echo "NFC/PC/SC設定..."
 systemctl enable pcscd
@@ -75,22 +82,25 @@ echo "ログディレクトリを作成中..."
 mkdir -p /var/log
 touch /var/log/sensor_system.log
 touch /var/log/sensor_data.json
-chown pi:pi /var/log/sensor_system.log
-chown pi:pi /var/log/sensor_data.json
+if [ "$CURRENT_USER" != "root" ]; then
+    chown $CURRENT_USER:$CURRENT_USER /var/log/sensor_system.log
+    chown $CURRENT_USER:$CURRENT_USER /var/log/sensor_data.json
+fi
 
 # systemdサービスファイル作成
 echo "システムサービスを設定中..."
-cat > /etc/systemd/system/sensor-monitoring.service << 'EOF'
+USER_HOME="/home/$CURRENT_USER"
+cat > /etc/systemd/system/sensor-monitoring.service << EOF
 [Unit]
 Description=Sensor Monitoring System
 After=network.target
 
 [Service]
 Type=simple
-User=pi
-Group=pi
-WorkingDirectory=/home/pi/sensor-monitoring
-ExecStart=/usr/bin/python3 /home/pi/sensor-monitoring/main.py
+User=$CURRENT_USER
+Group=$CURRENT_USER
+WorkingDirectory=$USER_HOME/sensor-monitoring
+ExecStart=/usr/bin/python3 $USER_HOME/sensor-monitoring/main.py
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -102,9 +112,11 @@ EOF
 
 # 設定ファイルのコピー（必要に応じて）
 echo "設定ファイルを準備中..."
-if [ ! -d "/home/pi/sensor-monitoring" ]; then
-    mkdir -p /home/pi/sensor-monitoring
-    chown pi:pi /home/pi/sensor-monitoring
+if [ ! -d "$USER_HOME/sensor-monitoring" ]; then
+    mkdir -p $USER_HOME/sensor-monitoring
+    if [ "$CURRENT_USER" != "root" ]; then
+        chown $CURRENT_USER:$CURRENT_USER $USER_HOME/sensor-monitoring
+    fi
 fi
 
 # GPU分割設定（GUI用）
@@ -141,7 +153,7 @@ echo "4. ログを確認："
 echo "   sudo journalctl -u sensor-monitoring -f"
 echo ""
 echo "5. 手動でテスト実行："
-echo "   cd /home/pi/sensor-monitoring && python3 main.py"
+echo "   cd $USER_HOME/sensor-monitoring && python3 main.py"
 echo ""
 echo "注意："
 echo "- NFCリーダーが正しく接続されていることを確認してください"
