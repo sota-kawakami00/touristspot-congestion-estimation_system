@@ -52,9 +52,13 @@ pip3 install --upgrade pip --break-system-packages
 # requirements.txtからインストール
 if [ -f "requirements.txt" ]; then
     pip3 install -r requirements.txt --break-system-packages
+    # Adafruit-DHTは--force-piオプションで強制インストール
+    pip3 install Adafruit-DHT --global-option="build_ext" --global-option="--force-pi" --break-system-packages
 else
     echo "requirements.txtが見つかりません。手動でライブラリをインストールします..."
-    pip3 install RPi.GPIO nfcpy Adafruit-DHT --break-system-packages
+    pip3 install RPi.GPIO nfcpy --break-system-packages
+    # Adafruit-DHTは--force-piオプションで強制インストール
+    pip3 install Adafruit-DHT --global-option="build_ext" --global-option="--force-pi" --break-system-packages
 fi
 
 echo "GPIO権限設定..."

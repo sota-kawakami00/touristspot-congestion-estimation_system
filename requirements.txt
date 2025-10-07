@@ -7,7 +7,7 @@ RPi.GPIO==0.7.1
 nfcpy==1.0.4
 
 # Temperature/Humidity Sensor (DHT22/AM2302)
-Adafruit-DHT==1.4.0
+# Adafruit-DHT==1.4.0  # 手動インストールが必要（--force-piオプション付き）
 
 # Alternative DHT library (if Adafruit-DHT doesn't work)
 # Adafruit-CircuitPython-DHT==3.7.7
